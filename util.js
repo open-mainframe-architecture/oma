@@ -43,6 +43,9 @@ var pkg = require('./package');
 
 var util = module.exports = {
   bestVersion: semver.maxSatisfying,
+  compareVersions: function(v1, v2) {
+    return semver.gt(v1, v2) ? 1 : semver.lt(v1, v2) ? -1 : 0;
+  },
   denodeify: denodeify,
   imageDimsOf: imageDimsOf,
   mkdir: denodeify(extfs.mkdirs),

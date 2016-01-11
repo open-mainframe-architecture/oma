@@ -65,10 +65,34 @@
           "src other/src ...": ""
         }
       },
+      "bootstrap": {
+        "short": "Bootstrap initial archives and bundles",
+        "usage": "[options] destination",
+        "long": "Copy first archives and bundles to destination",
+        "least": 1,
+        "most": 1,
+        "option": {
+          "clean": {
+            "letter": "c",
+            "arity": 0,
+            "describe": "Remove existing archives and bundles"
+          },
+          "silent": {
+            "letter": "s",
+            "arity": 0,
+            "describe": "Do not verify JavaScript sources"
+          }
+        },
+        "example": {
+          "-c /usr/local/oma/_": "",
+          "-s ~/.oma/_": ""
+        }
+      },
       "bundle": {
         "short": "Create bundles from archive",
         "usage": "[options] archive",
         "long": "Search archive for new bundles to publish",
+        "least": 1,
         "most": 1,
         "option": {
           "output": {
@@ -79,8 +103,25 @@
           }
         },
         "example": {
-          "-o usr/pub ...": "",
-          "my-archive-1.3.7.zip ...": ""
+          "-o usr/local/oma/_/pub ...": "",
+          "my-archive/1.3.7.zip ...": ""
+        }
+      },
+      "imagine": {
+        "short": "Create application image",
+        "usage": "[options] bundle ...",
+        "long": "Compute image from most recent bundle releases",
+        "least": 1,
+        "option": {
+          "input": {
+            "letter": "i",
+            "demand": true,
+            "describe": "Bundle directory",
+            "once": true
+          }
+        },
+        "example": {
+          "-i _/pub my-bundle ...": ""
         }
       }
     },
@@ -98,6 +139,14 @@
         "category": "script"
       }
     },
+    "bootstrap": {
+      "archives": [
+        "oma-runtime",
+        "oma-delta",
+        "oma-ui",
+        "oma-terminal"
+      ]
+    },
     "bundle": {
       "loaderBase": "bundle"
     },
@@ -106,6 +155,10 @@
       "class": "js,jison",
       "gfx": "png,jpg,gif",
       "script": "js"
+    },
+    "library": {
+      "archivesHome": "src",
+      "bundlesHome": "pub"
     },
     "module": {
       "bootScript": "boot.js",

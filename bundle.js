@@ -39,18 +39,20 @@ module.exports = function (archivePath, bundleDirectory) {
 };
 
 // open versioned archive at given path 
-var versionedArchive = /^([A-Za-z]+(?:-[A-Za-z]+)+)-(\d+\.\d+\.\d+)$/;
+var patternArchiveName = /^[A-Za-z]+(?:-[A-Za-z]+)+$/;
+var patternArchiveVersion = /^\d+\.\d+\.\d+$/;
 function openArchive(archivePath) {
-  var archiveName = path.basename(archivePath, '.zip');
-  var matches = archiveName.match(versionedArchive);
-  if (!matches) {
+  var archiveDirectory = path.dirname(archivePath);
+  var archiveName = path.basename(archiveDirectory);
+  var archiveVersion = path.basename(archivePath, '.zip');
+  if (!archiveName.match(patternArchiveName) || !archiveVersion.match(patternArchiveVersion)) {
     throw 'Invalid archive: ' + archivePath;
   }
   return util.unzip(archivePath)
     .then(function (archive) {
-      archive.home = path.dirname(archivePath);
-      archive.name = matches[1];
-      archive.version = matches[2];
+      archive.home = path.dirname(archiveDirectory);
+      archive.name = archiveName;
+      archive.version = archiveVersion;
       var modules = archive.modules = {};
       // collect assets of modules
       for (var entry in archive.entries) {
@@ -99,7 +101,7 @@ function publishBundle(mainArchive, bundleName, bundleConfig, bundleDirectory) {
 function bundleModules(mainArchive, bundleName, bundleConfig) {
   var archives = {}, bundledModules = {};
   archives[mainArchive.name] = mainArchive;
-  var externals = bundleConfig.archives || {};
+  var externals = bundleConfig.versions || {};
   delete externals[mainArchive.name];
   // find and open external archives (in same directory as main archive)
   return Promise.all(Object.keys(externals).map(function (externalName) {
@@ -137,11 +139,10 @@ function bundleModules(mainArchive, bundleName, bundleConfig) {
 
 // open archive with highest version that satifies dependency on external archive
 function findBestArchive(homeDirectory, archiveName, archiveVersion) {
-  var archivePath = homeDirectory + '/' + archiveName + '-+([0-9]).+([0-9]).+([0-9]).zip';
+  var archivePath = homeDirectory + '/' + archiveName + '/+([0-9]).+([0-9]).+([0-9]).zip';
   var versions = {};
   return util.mapFiles(archivePath, function (file, cb) {
-    var filename = path.basename(file.path, '.zip');
-    versions[filename.substring(filename.lastIndexOf('-') + 1)] = file.path;
+    versions[path.basename(file.path, '.zip')] = file.path;
     cb(null);
   })
     .then(function () {
@@ -156,7 +157,7 @@ function findBestArchive(homeDirectory, archiveName, archiveVersion) {
 // compute directory name for bundle release
 function releaseBundle(mainArchive, bundleConfig, modules) {
   // collect archives from where bundle configuration and bundled modules originate
-  var moduleOrigins = ['=' + mainArchive.name + '-' + mainArchive.version];
+  var moduleOrigins = ['=' + mainArchive.name + '/' + mainArchive.version];
   Object.keys(modules).sort().forEach(function (moduleName, index) {
     var bundledModule = modules[moduleName];
     bundledModule.configs = [];
@@ -169,13 +170,13 @@ function releaseBundle(mainArchive, bundleConfig, modules) {
       bundleConfig.boot = moduleName;
     }
     var moduleArchive = bundledModule.archive;
-    moduleOrigins.push(moduleName + '=' + moduleArchive.name + '-' + moduleArchive.version);
+    moduleOrigins.push(moduleName + '=' + moduleArchive.name + '/' + moduleArchive.version);
   });
   // calculate release id from md5 signature of module origins
   var release = bundleConfig.release = moduleOrigins.join();
   return crypto.createHash('md5').update(release, 'utf8').digest('base64')
     .replace(/=*$/, '').replace(/\//g, '-').replace(/\+/g, '_');
-    ;
+  ;
 }
 
 // process assets of module
@@ -343,26 +344,45 @@ function createBundleSpecs(mainArchive, bundleName, modules, release) {
 
 // generate configuration scripts of bundle loader
 function generateBundleConfigs(generate, mainArchive, bundleName, release) {
+  generate('function(bundle){',
+    '"use strict";',
+    'bundle.releases={',
+  // include configuration info about modules in this release
+    '\'', release.replace(/=/g, '\':\'').replace(/,/g, '\',\''), '\'',
+    '};'
+    );
+  // include configuration info about source archives in this release
+  var sourceVersions = computeSourceVersions(release);
+  generate('bundle.sources={');
+  Object.keys(sourceVersions).sort().forEach(function (archiveName, i) {
+    generate(i ? ',\'' : '\'', archiveName, '\':\'', sourceVersions[archiveName], '\'');
+  });
+  generate('};');
+  generate(
+    'bundle.publishes={',
+    '\'', assetPath.bundleLoader, '\':-1,',
+    '\'', assetPath.bundleMini, '\':-1,',
+    '\'', assetPath.bundleMeta, '\':-1',
+    '};',
+    '},'
+    );
   var configPath = assetPath.bundleScriptsHome + bundleName + '.js';
   return util.unzipText(mainArchive.file, mainArchive.entries[configPath])
     .then(function (configSource) {
-      generate('function(bundle){',
-        '"use strict";',
-        'bundle.releases={',
-      // include configuration info about source archives of modules in this release
-        '\'', release.replace(/=/g, '\':\'').replace(/,/g, '\',\''), '\'',
-        '};',
       // bundle loaders are public assets
-        'bundle.publishes={',
-        '\'', assetPath.bundleLoader, '\':-1,',
-        '\'', assetPath.bundleMini, '\':-1,',
-        '\'', assetPath.bundleMeta, '\':-1',
-        '};',
-        '},',
-        configSource
-        );
+      generate(configSource);
     })
     ;
+}
+
+// compute object that maps archive names to versions from bundle release
+function computeSourceVersions(release) {
+  var archiveVersions = {};
+  release.split(',').map(function (equation) {
+    var archiveVersion = equation.substring(equation.indexOf('=') + 1).split('/');
+    archiveVersions[archiveVersion[0]] = archiveVersion[1];
+  });
+  return archiveVersions;
 }
 
 // generate module specification of bundle loader
@@ -388,7 +408,7 @@ function generateModuleSpec(generate, bundledModule) {
       var publicAssets = util.selectEntries(assets, assetPath.publicHome);
       for (var _ in publicAssets) {
         generatePublicSpecs(generate, archive, publicAssets);
-        break;
+        return;
       }
     })
     .then(function () {
@@ -427,10 +447,11 @@ function generatePublicSpecs(generate, archive, assets) {
 function createBundleMeta(specsSource) {
   var moduleSpecs = evaluateModuleSpecs(specsSource);
   // extract release info from bundle config that maps bundled modules to archives
-  var metaObject = collectModuleConfig(moduleSpecs['']['']).releases;
-  var sortedNames = Object.keys(metaObject).sort();
+  var moduleArchives = collectModuleConfig(moduleSpecs['']['']).releases;
+  var sortedNames = Object.keys(moduleArchives).sort();
+  var metaObject = {};
   // collect more meta info about modules
-  for (var moduleName in metaObject) {
+  for (var moduleName in moduleArchives) {
     var moduleSpec = moduleSpecs[moduleName];
     var moduleConfig = collectModuleConfig(moduleSpec['']);
     var dependencies = moduleConfig.depends || [];
@@ -446,7 +467,7 @@ function createBundleMeta(specsSource) {
     }
     metaObject[moduleName] = {
       description: moduleConfig.description || 'Undocumented',
-      archive: metaObject[moduleName],
+      archive: moduleArchives[moduleName],
       dependencies: dependencies.length ? dependencies.sort() : undefined,
       index: sortedNames.indexOf(moduleName),
       optional: typeof moduleConfig.test === 'function' ? 'y' : undefined,

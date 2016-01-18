@@ -1,10 +1,2 @@
 #!/usr/bin/env node
-require('../cli')()
-  .then(null, function (uncaught) {
-    if (uncaught.stack) {
-      console.error(uncaught.stack);
-    } else {
-      console.error(uncaught);
-    }
-  })
-;
+require('oma-cli')(require('../package').version, require('../'));

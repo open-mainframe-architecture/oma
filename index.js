@@ -20,16 +20,24 @@ var silentJavaScript = {
 // specify commands for oma-cli
 module.exports = {
   analyze: {
-    usage: '',
-    short: '',
-    long: '',
-    examples: [],
-    least: 1,
+    usage: '[options] archive',
+    short: 'Analyze classes in archive',
+    long: 'Create extensive JSON analysis of class scripts in archive',
+    examples: [
+      '-o classes.json ...',
+      'my-archive/1.3.7.zip'
+    ],
+    least: 1, most: 1,
     option: {
-      
+      output: {
+        letter: 'o', once: true,
+        describe: 'Alternative output file, otherwise stdout'
+      }
     },
-    command: function(opts) {
-      return analyze();
+    command: function (opts) {
+      return util.openWriteStream(opts.output)
+        .then(function (output) { return analyze(opts[''][0], output); })
+        ;
     }
   },
   archive: {

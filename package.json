@@ -4,6 +4,7 @@
   "main": "index",
   "version": "1.4.1",
   "dependencies": {
+    "oma-analyze": "^1.0.0",
     "oma-archive": "^1.0.0",
     "oma-bundle": "^1.0.0",
     "oma-cli": "^1.0.0",

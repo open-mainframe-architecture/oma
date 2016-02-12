@@ -25,7 +25,7 @@ module.exports = {
     long: 'Create extensive JSON analysis of class scripts in archive',
     examples: [
       '-o classes.json ...',
-      'my-archive/1.3.7.zip'
+      'my-domain/1.3.7/archive.zip'
     ],
     least: 1, most: 1,
     option: {
@@ -45,7 +45,7 @@ module.exports = {
     short: 'Create archive with modules',
     long: 'Scan directories for source assets of modules',
     examples: [
-      '-o my-archive/1.3.7.zip ...',
+      '-o my-domain/1.3.7/archive.zip ...',
       'src other/src ...'
     ],
     least: 1,
@@ -82,18 +82,19 @@ module.exports = {
     command: function (opts) {
       var error = opts.silent ? null : console.error;
       var destination = opts[''][0];
-      var archiveDirectory = destination + '/' + constants.library.archives;
-      var bundleDirectory = destination + '/' + constants.library.bundles;
+      var archiveDir = destination + '/' + constants.library.preserve;
+      var bundleDir = destination + '/' + constants.library.publish;
       return (opts.clean ? util.rmdir(destination) : Promise.resolve())
         .then(function () {
-          return Promise.all(setup.bootstrap.map(function (archiveName) {
-            var sourceDirectory = path.dirname(require.resolve(archiveName));
-            var version = require(sourceDirectory + '/package').version;
-            var archivePath = archiveDirectory + '/' + archiveName + '/' + version + '.zip';
+          return Promise.all(setup.bootstrap.map(function (name) {
+            var sourceDir = path.dirname(require.resolve(name));
+            var version = require(sourceDir + '/package').version;
+            var archiveZip = constants.archive.file;
+            var archivePath = archiveDir + '/' + name + '/' + version + '/' + archiveZip + '.zip';
             return util.stat(archivePath)
               .then(null, function () {
                 return util.openWriteStream(archivePath)
-                  .then(function (output) { return archive(error, [sourceDirectory], output); })
+                  .then(function (output) { return archive(error, [sourceDir], output); })
                   ;
               })
               .then(function () { return archivePath; })
@@ -102,7 +103,16 @@ module.exports = {
         })
         .then(function (archivePaths) {
           return Promise.all(archivePaths.map(function (archivePath) {
-            return bundle(archivePath, bundleDirectory);
+            var analysisPath = path.dirname(archivePath) + '/' + constants.archive.file + '.json';
+            return Promise.all([
+              bundle(archivePath, bundleDir),
+              util.stat(analysisPath)
+                .then(null, function () {
+                  return util.openWriteStream(analysisPath)
+                    .then(function (output) { return analyze(archivePath, output); })
+                    ;
+                })
+            ]);
           }));
         })
         ;
@@ -114,7 +124,7 @@ module.exports = {
     long: 'Search archive for new bundles to publish',
     examples: [
       '-o usr/local/oma/_ ...',
-      'my-archive/1.3.7.zip ...'
+      'my-domain/1.3.7/archive.zip ...'
     ],
     least: 1, most: 1,
     option: {
@@ -124,7 +134,7 @@ module.exports = {
       }
     },
     command: function (opts) {
-      return bundle(opts[''][0], opts.output + '/' + constants.library.bundles);
+      return bundle(opts[''][0], opts.output + '/' + constants.library.publish);
     }
   },
   imagine: {
@@ -142,7 +152,7 @@ module.exports = {
       }
     },
     command: function (opts) {
-      return imagine(opts.input + '/' + constants.library.bundles, opts['']);
+      return imagine(opts.input + '/' + constants.library.publish, opts['']);
     }
   }
 }

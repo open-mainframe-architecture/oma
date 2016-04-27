@@ -4,17 +4,17 @@
   "main": "index",
   "version": "1.0.0",
   "dependencies": {
-    "oma-analyze": "^1.0.0",
-    "oma-archive": "^1.0.0",
-    "oma-bundle": "^1.0.0",
-    "oma-cli": "^1.0.0",
-    "oma-constants": "^1.0.0",
-    "oma-imagine": "^1.0.0",
-    "oma-delta": "^1.0.0",
-    "oma-runtime": "^1.0.0",
-    "oma-terminal": "^1.0.0",
-    "oma-ui": "^1.0.0",
-    "oma-util": "^1.0.0"
+    "oma-analyze": "^2.0.0",
+    "oma-archive": "^2.0.0",
+    "oma-bundle": "^2.0.0",
+    "oma-cli": "^2.0.0",
+    "oma-constants": "^2.0.0",
+    "oma-imagine": "^2.0.0",
+    "oma-delta": "^2.0.0",
+    "oma-runtime": "^2.0.0",
+    "oma-terminal": "^2.0.0",
+    "oma-ui": "^2.0.0",
+    "oma-util": "^2.0.0"
   },
   "keywords": [
     "oma",

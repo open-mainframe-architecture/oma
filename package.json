@@ -2,7 +2,7 @@
   "name": "oma",
   "description": "Reference implementation.",
   "main": "index",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "dependencies": {
     "oma-analyze": "^2.0.0",
     "oma-archive": "^2.0.0",

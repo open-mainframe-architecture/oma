@@ -1,18 +1,18 @@
 "use strict";
 
-var path = require('path');
-var pkg = require('./package')
-var setup = pkg[pkg.name];
+const path = require('path');
+const pkg = require('./package')
+const setup = pkg[pkg.name];
 
-var analyze = require('oma-analyze');
-var archive = require('oma-archive');
-var bundle = require('oma-bundle');
-var constants = require('oma-constants');
-var imagine = require('oma-imagine');
-var util = require('oma-util');
+const analyze = require('oma-analyze');
+const archive = require('oma-archive');
+const bundle = require('oma-bundle');
+const constants = require('oma-constants');
+const imagine = require('oma-imagine');
+const util = require('oma-util');
 
-// common option not to verify JavaScript sources
-var silentJavaScript = {
+// common option to skip JavaScript source verification
+const silentJavaScript = {
   letter: 's', arity: 0,
   describe: 'Do not verify JavaScript sources'
 };
@@ -24,7 +24,7 @@ module.exports = {
     short: 'Analyze classes in archive',
     long: 'Create extensive JSON analysis of class scripts in archive',
     examples: [
-      '-o classes.json ...',
+      '-o archive.json ...',
       'my-domain/1.3.7/archive.zip'
     ],
     least: 1, most: 1,
@@ -34,11 +34,8 @@ module.exports = {
         describe: 'Alternative output file, otherwise stdout'
       }
     },
-    command: function (opts) {
-      return util.openWriteStream(opts.output)
-        .then(function (output) { return analyze(opts[''][0], output); })
-        ;
-    }
+    command: opts => util.openWriteStream(opts.output)
+      .then(output => util.copyJSON(analyze(opts[''][0]), output))
   },
   archive: {
     usage: '[options] directory ...',
@@ -56,12 +53,8 @@ module.exports = {
       },
       silent: silentJavaScript
     },
-    command: function (opts) {
-      var error = opts.silent ? null : console.error;
-      return util.openWriteStream(opts.output)
-        .then(function (output) { return archive(error, opts[''], output); })
-        ;
-    }
+    command: opts => util.openWriteStream(opts.output)
+      .then(output => archive(opts.silent ? null : console.error, opts[''], output))
   },
   bootstrap: {
     usage: '[options] destination',
@@ -79,42 +72,30 @@ module.exports = {
       },
       silent: silentJavaScript
     },
-    command: function (opts) {
-      var error = opts.silent ? null : console.error;
-      var destination = opts[''][0];
-      var archiveDir = destination + '/' + constants.library.preserve;
-      var bundleDir = destination + '/' + constants.library.publish;
+    command: opts => {
+      const error = opts.silent ? null : console.error;
+      const destination = opts[''][0];
+      const archiveDir = `${destination}/${constants.library.preserve}`;
+      const bundleDir = `${destination}/${constants.library.publish}`;
       return (opts.clean ? util.rmdir(destination) : Promise.resolve())
-        .then(function () {
-          return Promise.all(setup.bootstrap.map(function (name) {
-            var sourceDir = path.dirname(require.resolve(name));
-            var version = require(sourceDir + '/package').version;
-            var archiveZip = constants.archive.file;
-            var archivePath = archiveDir + '/' + name + '/' + version + '/' + archiveZip + '.zip';
-            return util.stat(archivePath)
-              .then(null, function () {
-                return util.openWriteStream(archivePath)
-                  .then(function (output) { return archive(error, [sourceDir], output); })
-                  ;
-              })
-              .then(function () { return archivePath; })
-              ;
-          }));
-        })
-        .then(function (archivePaths) {
-          return Promise.all(archivePaths.map(function (archivePath) {
-            var analysisPath = path.dirname(archivePath) + '/' + constants.archive.file + '.json';
-            return Promise.all([
-              bundle(archivePath, bundleDir),
-              util.stat(analysisPath)
-                .then(null, function () {
-                  return util.openWriteStream(analysisPath)
-                    .then(function (output) { return analyze(archivePath, output); })
-                    ;
-                })
-            ]);
-          }));
-        })
+        .then(() => Promise.all(setup.bootstrap.map(name => {
+          const sourceDir = path.dirname(require.resolve(name));
+          const version = require(`${sourceDir}/package`).version;
+          const archivePath = `${archiveDir}/${name}/${version}/${constants.archive.file}.zip`;
+          return util.stat(archivePath)
+            .catch(() => util.openWriteStream(archivePath)
+              .then(output => archive(error, [sourceDir], output)))
+            .then(() => archivePath)
+            ;
+        })))
+        .then(archivePaths => Promise.all(archivePaths.map(archivePath => {
+          const analysisPath = `${path.dirname(archivePath)}/${constants.archive.file}.json`;
+          return Promise.all([
+            bundle(archivePath, bundleDir),
+            util.stat(analysisPath)
+              .catch(() => util.copyJSON(analyze(archivePath), util.openWriteStream(analysisPath)))
+          ]);
+        })))
         ;
     }
   },
@@ -133,9 +114,7 @@ module.exports = {
         describe: 'Output directory for new bundles'
       }
     },
-    command: function (opts) {
-      return bundle(opts[''][0], opts.output + '/' + constants.library.publish);
-    }
+    command: opts => bundle(opts[''][0], `${opts.output}/${constants.library.publish}`)
   },
   imagine: {
     usage: '[options] bundle ...',
@@ -149,10 +128,15 @@ module.exports = {
       input: {
         letter: 'i', demand: true, once: true,
         describe: 'Input directory for bundles'
+      },
+      output: {
+        letter: 'o', once: true,
+        describe: 'Alternative image file, otherwise stdout'
       }
     },
-    command: function (opts) {
-      return imagine(opts.input + '/' + constants.library.publish, opts['']);
-    }
+    command: opts => util.openWriteStream(opts.output)
+      .then(output =>
+        util.copyJSON(imagine(`${opts.input}/${constants.library.publish}`, opts['']), output)
+      )
   }
 }

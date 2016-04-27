@@ -2,7 +2,7 @@
   "name": "oma",
   "description": "Reference implementation.",
   "main": "index",
-  "version": "1.4.1",
+  "version": "1.0.0",
   "dependencies": {
     "oma-analyze": "^1.0.0",
     "oma-archive": "^1.0.0",
@@ -10,10 +10,10 @@
     "oma-cli": "^1.0.0",
     "oma-constants": "^1.0.0",
     "oma-imagine": "^1.0.0",
-    "oma-delta": "^1.4.0",
-    "oma-runtime": "^1.4.0",
-    "oma-terminal": "^1.4.0",
-    "oma-ui": "^1.4.0",
+    "oma-delta": "^1.0.0",
+    "oma-runtime": "^1.0.0",
+    "oma-terminal": "^1.0.0",
+    "oma-ui": "^1.0.0",
     "oma-util": "^1.0.0"
   },
   "keywords": [

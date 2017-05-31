@@ -1,46 +1,38 @@
 {
   "name": "oma",
-  "description": "Reference implementation of open mainframe architecture.",
-  "main": "index",
-  "version": "10.0.2",
-  "dependencies": {
-    "oma-analyze": "^10.0.2",
-    "oma-archive": "^10.0.2",
-    "oma-bootstrap": "^10.0.2",
-    "oma-bundle": "^10.0.2",
-    "oma-cli": "^10.0.1",
-    "oma-constants": "^10.0.1",
-    "oma-imagine": "^10.0.2",
-    "oma-delta": "^10.0.1",
-    "oma-mainframe": "^10.0.1",
-    "oma-runtime": "^10.0.1",
-    "oma-terminal": "^10.0.2",
-    "oma-ui": "^10.0.1",
-    "oma-util": "^10.0.2"
+  "description": "Reference implementation of the Open Mainframe Architecture",
+  "author": "open.mainframe@gmail.com",
+  "version": "11.0.1",
+  "engines": {
+    "node": ">=7.0"
   },
-  "keywords": [
-    "oma",
-    "open mainframe architecture",
-    "executable prototype"
-  ],
+  "main": "cli",
+  "bin": "./cli",
   "repository": {
     "type": "git",
     "url": "https://github.com/open-mainframe-architecture/oma.git"
   },
-  "author": "open.mainframe@gmail.com",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/open-mainframe-architecture/oma/issues"
   },
-  "bin": {
-    "oma": "bin/oma"
+  "scripts": {
+    "prepublish": "node script/prepublish",
+    "clean": "node script/clean",
+    "test": "mocha --recursive"
   },
-  "oma": {
-    "bootstrap": [
-      "oma-runtime",
-      "oma-delta",
-      "oma-ui",
-      "oma-terminal",
-      "oma-mainframe"    ]
+  "dependencies": {
+    "concat-with-sourcemaps": "^1.0.4",
+    "express": "^4.15.2",
+    "systemjs": "^0.20.12",
+    "systemjs-builder": "^0.16.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.0.35",
+    "@types/mocha": "^2.2.41",
+    "@types/node": "^7.0.12",
+    "@types/systemjs": "^0.20.2",
+    "mocha": "^3.3.0",
+    "typescript": "^2.3.2"
   }
 }

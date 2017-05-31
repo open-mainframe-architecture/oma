@@ -1,0 +1,18 @@
+{
+  "extends": "../default.tsconfig.json",
+  "include": [
+    "**/*.ts"
+  ],
+  "compilerOptions": {
+    "lib": [
+      "es6"
+    ],
+    "types": [],
+    "baseUrl": ".",
+    "paths": {
+      "oma/*": [
+        "*"
+      ]
+    }
+  }
+}

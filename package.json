@@ -2,7 +2,7 @@
   "name": "oma",
   "description": "Reference implementation of the Open Mainframe Architecture",
   "author": "open.mainframe@gmail.com",
-  "version": "11.0.4",
+  "version": "11.0.5",
   "engines": {
     "node": ">=7.0"
   },

@@ -2,12 +2,11 @@
   "name": "oma",
   "description": "Reference implementation of the Open Mainframe Architecture",
   "author": "open.mainframe@gmail.com",
-  "version": "11.0.1",
+  "version": "11.0.2",
   "engines": {
     "node": ">=7.0"
   },
   "main": "cli",
-  "bin": "./cli",
   "repository": {
     "type": "git",
     "url": "https://github.com/open-mainframe-architecture/oma.git"

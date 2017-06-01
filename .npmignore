@@ -1,0 +1,6 @@
+#TypeScript sources are already included in source maps
+src
+
+#These files are only required when developing and publishing
+script
+packaging.js

@@ -5,6 +5,7 @@
     "strict": true,
     "sourceMap": true,
     "declaration": true,
-    "outDir": ".."
+    "outDir": "..",
+    "newLine": "lf"
   }
 }

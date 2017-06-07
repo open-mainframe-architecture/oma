@@ -5,6 +5,10 @@ const bla = document.createElement('a')
 
 const foo = sessionStorage.getItem('oma-navigator')
 
+const shitje = render.bar()
+
+const wtf = always.returnNothing()
+
 export function bar() {
-  return '' + bla + always.returnNothing() + render.bar()
+  return bla
 }

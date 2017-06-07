@@ -361,6 +361,11 @@ export interface Incident {
   readonly isUnhandled: boolean
 
   /**
+   * Offending agent caused this incident.
+   */
+  readonly offender: Agent
+
+  /**
    * Handle incidident by ignoring it and allowing the offending actor to continue work.
    * @returns True if this incident was unhandled before, otherwise false
    */

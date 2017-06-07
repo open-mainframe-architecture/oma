@@ -1,18 +1,26 @@
-import { Cue } from 'oma/theater'
+import { Shape, Universe, Value } from 'oma/data'
+import { Agent, Cue, Forensics, Job, Manager, Story } from 'oma/theater'
 
 const { isArray } = Array
+const { parse, stringify } = JSON
 
 import * as always from 'oma/always'
+import * as data from 'oma/data'
 import * as kernel from 'oma/kernel'
 import * as loop from 'oma/loop'
+import * as theater from 'oma/theater'
 
 const { throwError } = always
+const { isValuable } = data
 const { detect, scope } = kernel
 const { entries } = loop
+const { Testimony } = theater
 
+import * as play from 'oma/theater/play'
 import * as wait from 'oma/theater/wait'
 
-const { AbstractCue } = wait
+const { Role, spawn } = play
+const { AbstractCue, employment } = wait
 
 export interface URI {
   readonly scheme: string
@@ -40,7 +48,7 @@ export interface Request extends Message {
 
 export interface Response extends Message {
   readonly code: number
-  readonly status: string
+  readonly status?: string
 }
 
 export function decodeURI(input: string): URI | undefined {
@@ -87,12 +95,72 @@ export function encodeURI(uri: URI) {
   return output.join('')
 }
 
-export function get(location: string, binary?: boolean) {
-  return send({ method: 'GET', uri: decodeURI(location) || throwError('bad URI') }, binary)
+export function get(location: string | URI, binary?: boolean) {
+  return send({ method: 'GET', uri: validateURI(location) }, binary)
+}
+
+export function post(location: string | URI, body?: Body, binary?: boolean) {
+  return send({ body, method: 'POST', uri: validateURI(location) }, binary)
 }
 
 export function send(request: Request, binary = false): Cue<Response> {
   return new SendRequest(request, binary)
+}
+
+export function sink<A extends Agent>(manager: Manager, location: string | URI, universe: Universe) {
+  return spawn<A>(manager, Sink, location, universe)
+}
+
+export function rise(agent: Agent, universe: Universe) {
+  const { get } = Reflect
+  const unmarshaller = (shape: Shape) => universe.unmarshal(shape)
+  return function* (request: Request): Story<Response> {
+    let body: RiseBody, job: Job<any> = yield employment()
+    try {
+      const { selector, parameters: shapes }: SinkBody = parse(<string>request.body)
+      job = get(agent, selector)(...shapes.map(unmarshaller))
+      const value: Value = yield job
+      if (!isValuable(value)) {
+        throw new Error('remote agent should produce valuable result')
+      }
+      body = { result: universe.marshal(value) }
+    } catch (problem) {
+      const exception = problem instanceof Error ? problem : new Error(problem)
+      const forensics = job.gatherForensics(exception)
+      body = { forensics }
+    }
+    return { code: 200, body: stringify(body) } as Response
+  }
+}
+
+interface SinkBody {
+  readonly selector: string
+  readonly parameters: Shape[]
+}
+interface RiseBody {
+  readonly result?: Shape
+  readonly forensics?: Forensics
+}
+
+class Sink<A extends Agent> extends Role<A>  {
+
+  private readonly marshaller: (value: Value) => Shape
+
+  constructor(private readonly location: string | URI, private readonly universe: Universe) {
+    super()
+    this.marshaller = (value: Value) => universe.marshal(value)
+  }
+
+  public *improviseStory<T>(selector: string, values: Value[]): Story<T> {
+    if (!values.every(isValuable)) {
+      throw new Error('remote agent expects valuable parameters')
+    }
+    const parameters = values.map(value => this.marshaller)
+    const response: Response = yield post(this.location, stringify({ selector, parameters }))
+    const { result, forensics }: RiseBody = parse(<string>response.body)
+    return forensics ? new Testimony(forensics) : this.universe.unmarshal(<Shape>result)
+  }
+
 }
 
 const decode = decodeURIComponent
@@ -100,6 +168,10 @@ const encode = encodeURIComponent
 
 const uriPattern = /^(?:([^:/?#]+):)?(?:\/\/([^/?#]*))?([^?#]+)?(?:\?([^#]*))?(?:#(.*))?$/
 const authorityPattern = /^(?:([^:]+)(?::(.*))@)?([^:]+)(?::([0-9]{1,5}))?$/
+
+function validateURI(location: string | URI) {
+  return typeof location === 'string' ? decodeURI(location) || throwError('bad URI') : location
+}
 
 function decodeParameter(parameterPair: string) {
   return parameterPair.split('=').map(decode) as [string, string]

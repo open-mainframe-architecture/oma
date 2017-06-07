@@ -1126,6 +1126,10 @@ class Incident implements theater.Incident {
     return !this.handled
   }
 
+  public get offender() {
+    return this.actor.agent
+  }
+
   public ignore() {
     if (!this.handled) {
       this.handled = true

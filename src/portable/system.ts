@@ -1,61 +1,79 @@
+const { keys } = Object
+
 import * as SystemJS from 'systemjs'
 
+/**
+ * A bundle publishes modules.
+ */
 export interface Bundle {
 
   /**
    * Module path of SystemJS configuration file.
    */
-  readonly configuration: string
+  readonly systemConfiguration: string
 
   /**
-   * Is this a foundation bundle with a system implementation?
+   * Is this a foundation bundle with a System implementation?
    */
-  readonly system: boolean
+  readonly includesSystem: boolean
 
+  /**
+   * Timestamp in ISO 8601 format when bundle was published.
+   */
+  readonly timestamp: string
+
+  /**
+   * Digest of bundled sources.
+   */
+  readonly digest: string
+
+  /**
+   * Bundled modules.
+   */
   readonly modules: {
+
+    /**
+     * Map full path of a module to its module dependencies.
+     */
     readonly [name: string]: string[]
+
   }
-}
-
-/**
- * Analysis of the modules in a system.
- */
-export interface Analysis {
-
-  /**
-   * Generate bundle.
-   * @param directory The directory where the bundle should be created
-   * @param include Names of modules to include
-   * @param foundation Mandatory foundation bundle with modules to exclude
-   * @param exclude More bundles with modules to exclude
-   * @returns A promise to describe the modules in the generated bundle
-   */
-  generateBundle(directory: string, include: string[], foundation: Bundle, ...exclude: Bundle[]): Promise<Bundle>
-
-  /**
-   * Generate executable foundation bundle with system implementation.
-   * @param directory The directory where the bundle should be created
-   * @param include Names of modules to include
-   * @returns A promise to describe the modules in the generated bundle
-   */
-  generateFoundation(directory: string, include: string[]): Promise<Bundle>
-
-  /**
-   * Compute transitive closure of module dependencies.
-   * @param include Names of modules to include
-   * @returns Set with module names
-   */
-  traceDependencies(include: string[]): Promise<Set<string>>
 
 }
 
 /**
- * Construct analysis with module path to a SystemJS configuration file.
- */
-export type AnalysisConstructor = new (configuration: string) => Analysis
-
-/**
- * Location from where the current system was loaded.
+ * Location from where bundle with SystemJS was loaded.
  * The location is a script path in web environments and a module path in Node.js environments.
  */
-export const location: string = SystemJS.scriptSrc // undocumented 'feature' of SystemJS
+export const bundleLocation: string = SystemJS.scriptSrc // undocumented 'feature' of SystemJS
+
+/**
+ * Prepare SystemJS for bundle loading.
+ * @param home URL to directory where bundles are located
+ */
+export function setBundlesHome(home: string) {
+  // 'register' will become 'system' format?
+  SystemJS.config({ meta: { [`${home}/*`]: { format: 'register' } } })
+}
+
+/**
+ * Add bundled modules to system.
+ * @param bundleLocation URL to JavaScript file with bundled sources in System.register format
+ * @param specification Bundle specification
+ */
+export function addBundledModules(bundleLocation: string, specification: Bundle) {
+  SystemJS.config({
+    bundles: {
+      [bundleLocation]: keys(specification.modules)
+    }
+  })
+}
+
+/**
+ * Import modules from bundles.
+ * @param moduleNames Names of modules to import
+ * @returns Promise of array with imported modules
+ */
+export function importModules(moduleNames: string[]) {
+  return Promise.all(moduleNames.map(name => SystemJS.import(name)))
+}

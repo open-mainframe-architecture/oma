@@ -1,19 +1,24 @@
 import { CommandStream, ControlStream, Message, MessageStream } from 'oma/io'
 import { Channel, Child } from 'oma/kernel'
 import { Forensics, Hint, Job, Manager, Story } from 'oma/theater'
+import { Bundle } from 'oma/system'
 import { Queue } from 'oma/theater/wait'
 
-const { assign } = Object
+const { assign, create } = Object
 
 import * as always from 'oma/always'
 import * as io from 'oma/io'
 import * as kernel from 'oma/kernel'
+import * as loop from 'oma/loop'
 import * as system from 'oma/system'
+import * as web from 'oma/web'
 
 const { returnNothing, throwError } = always
 const { command, control, synthesize } = io
 const { bearChild, parentChannel } = kernel
-const { location } = system
+const { entries } = loop
+const { addBundledModules, bundleLocation, importModules, setBundlesHome } = system
+const { bundleFilename } = web.constants
 
 import * as management from 'oma/theater/management'
 import * as news from 'oma/theater/news'
@@ -26,9 +31,37 @@ const { director, run, report, spawn } = play
 const { queue } = wait
 
 /**
+ * A launch describes which modules to load in an environment and where they can be found.
+ */
+export interface Launch {
+
+  /**
+   * URL to directory where bundles are located.
+   */
+  readonly home: string
+
+  /**
+   * Specifications of involved bundles.
+   */
+  readonly bundles: { readonly [bundleName: string]: Bundle }
+
+  /**
+   * Main modules are loaded upon launch.
+   */
+  readonly main: string[]
+
+}
+
+/**
  * An isolated environment cannot share objects with other environments.
  */
 export interface Environment extends Manager {
+
+  /**
+   * Load main modules from launch.
+   * @param launch Description of modules to launch
+   */
+  initiate(launch: Launch): Job<void>
 
 }
 
@@ -62,13 +95,15 @@ export const environment = spawn<Environment>(director, class $Environment exten
   // control subsidiary in parent environment
   private parentSubsidiary: Subsidiary
 
+  private readonly launchedBundles: { [name: string]: Bundle } = create(null)
+
   public *initialize(): Story<void> {
     if (parentChannel) {
       const self = this.self
       const switchboard = this.parentSwitchboard = new Switchboard(parentChannel)
       // command subsidiary agent in parent environment
       const subsidiaryCommand = switchboard.open<CommandStream>(self, subsidiaryLine)
-      const subsidiary = this.parentSubsidiary = command<Subsidiary>(self, subsidiaryCommand)        
+      const subsidiary = this.parentSubsidiary = command<Subsidiary>(self, subsidiaryCommand)
       // deliver forensics to subsidiary in parent
       addOutlet(forensics => { subsidiary.brief(forensics).run() })
       // allow parent to control this child environment
@@ -77,6 +112,18 @@ export const environment = spawn<Environment>(director, class $Environment exten
       // acknowledge initialization
       return subsidiary.postInitialize()
     }
+  }
+
+  public *initiate(launch: Launch) {
+    const home = launch.home, bundles = this.launchedBundles
+    setBundlesHome(home)
+    for (const [bundleName, specification] of entries(launch.bundles)) {
+      if (bundles[bundleName]) {
+        throw new Error(`bundle conflict ${bundleName}`)
+      }
+      addBundledModules(`${home}/${bundleName}/${specification.digest}/${bundleFilename}`, bundles[bundleName] = specification)
+    }
+    yield importModules(launch.main)
   }
 
 })
@@ -148,7 +195,7 @@ class $Subsidiary extends Loose<Subsidiary> {
   }
 
   public *initialize() {
-    const self = this.self, child = this.child = bearChild<[number, Message]>(location)
+    const self = this.self, child = this.child = bearChild<[number, Message]>(bundleLocation)
     const switchboard = this.switchboard = new Switchboard(child)
     this.environment = command<Environment>(self, switchboard.open<CommandStream>(self, environmentLine))
     yield run<void>(function controlling() {

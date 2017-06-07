@@ -38,7 +38,7 @@ export class Burnout extends Error {
  * @param hints Hints of child cues
  * @returns New parent cue
  */
-export function all(...hints: Hint<any>[]): Cue<IterableIterator<any>> {
+export function all(hints: Hint<any>[]): Cue<IterableIterator<any>> {
   return hints.length ? new ConjunctParent(hints) : spark(empty<void>())
 }
 
@@ -50,7 +50,7 @@ export function all(...hints: Hint<any>[]): Cue<IterableIterator<any>> {
  * @param hints Hints of child cues
  * @returns New parent cue
  */
-export function one(...hints: Hint<any>[]): Cue<any> {
+export function one(hints: Hint<any>[]): Cue<any> {
   return hints.length > 1 ? new DisjunctParent(hints) : hints.length === 1 ? signal(hints[0]) : spark<undefined>()
 }
 
@@ -60,7 +60,7 @@ export function one(...hints: Hint<any>[]): Cue<any> {
  * @param hints Hints of child cues
  * @returns New parent cue
  */
-export function any(...hints: Hint<any>[]): Cue<any> {
+export function any(hints: Hint<any>[]): Cue<any> {
   return hints.length > 1 ? new IndiscriminateParent(hints) : hints.length === 1 ? signal(hints[0]) : spark<undefined>()
 }
 

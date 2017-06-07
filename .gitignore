@@ -48,3 +48,6 @@ npm-debug.log
 
 # Node.js
 node_modules
+
+# Visual Studio Code
+.vscode

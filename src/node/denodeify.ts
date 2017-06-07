@@ -1,3 +1,5 @@
+//TODO replace with util.promisify from Node 8.0+ when @types/node is up-to-date
+
 /**
  * Convert callback style to promise-based code.
  * @param code Closure with callback-style code 

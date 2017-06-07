@@ -1,7 +1,11 @@
+import { Stats } from 'fs'
+
+const { create } = Object
+
 import * as fs from 'fs'
 import * as path from 'path'
 
-const { dirname } = path
+const { dirname, join } = path
 
 import denodeify from 'oma/denodeify'
 
@@ -10,11 +14,21 @@ export type ReadOptions = string | { encoding: string, flag?: string } | { flag:
 export type WriteData = string | Buffer | Uint8Array
 export type WriteOptions = string | { encoding?: string, flag?: string, mode?: number }
 
+export type DirectoryContents = { readonly [filename: string]: Stats }
+
+export const access = denodeify<(filename: string, mode?: number) => Promise<void>>(fs.access)
 export const peekFile = denodeify<(filename: string) => Promise<fs.Stats>>(fs.stat)
 export const readFile = denodeify<(filename: string, options?: ReadOptions) => Promise<ReadData>>(fs.readFile)
 export const writeFile = denodeify<(filename: string, data: WriteData, options?: WriteOptions) => Promise<void>>(fs.writeFile)
 
+export const open = denodeify<(filename: string, flags: string | number, mode?: number) => Promise<number>>(fs.open)
+export const write = denodeify<(fd: number, content: Buffer | string) => Promise<number>>(fs.write)
+export const close = denodeify<(fs: number) => Promise<void>>(fs.close)
+
 export const makeDirectory = denodeify<(directory: string, mode?: number) => Promise<void>>(fs.mkdir)
+export const readDirectory = denodeify<(directory: string) => Promise<string[]>>(fs.readdir)
+
+export const stat = denodeify<(filename: string) => Promise<Stats>>(fs.stat)
 
 export function makeDirectories(directory: string, mode?: number): Promise<void> {
   return peekFile(directory)
@@ -31,4 +45,13 @@ export function makeDirectories(directory: string, mode?: number): Promise<void>
         throw reason
       }
     })
+}
+
+export function readDirectoryContents(directory: string): Promise<DirectoryContents> {
+  const stats: { [filename: string]: Stats } = create(null)
+  return readDirectory(directory)
+    .then(files => Promise.all(files.map(filename => stat(join(directory, filename))))
+      .then(filestats => files.forEach((filename, i) => { stats[filename] = filestats[i] }))
+    )
+    .then(() => stats)
 }

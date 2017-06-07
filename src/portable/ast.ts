@@ -223,7 +223,7 @@ export interface Scanner {
   readonly text: string
 
   /**
-   * Generate a error. The error is not thrown.
+   * Generate an error. The error is not thrown.
    * @param message Explanation of error
    * @param offset Optional offset of error location defaults to current scanner offset
    * @returns An error

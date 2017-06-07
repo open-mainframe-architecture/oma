@@ -1,5 +1,8 @@
-#These files are only required when developing and publishing
+# These files are only required when developing and publishing
 script
 src/node/test
 test
 packaging.js
+
+# Visual Studio Code
+.vscode

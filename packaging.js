@@ -2,8 +2,9 @@
 
 const { create, keys } = Object
 
-const child_process = require('child_process')
+const { fork } = require('child_process')
 const { basename, extname, join } = require('path')
+const { promisify } = require('util')
 
 // cli of typescript compiler
 const tsc = join(require.resolve('typescript'), '../../bin/tsc')
@@ -11,30 +12,16 @@ const tsc = join(require.resolve('typescript'), '../../bin/tsc')
 // compile typescript project in a child process
 function compile(projectDirectory) {
   return new Promise((resolve, reject) => {
-    const child = child_process.fork(tsc, ['-p', projectDirectory])
+    const child = fork(tsc, ['-p', projectDirectory])
     child.on('error', error => { reject(error) })
     child.on('exit', () => { resolve() })
   })
 }
 
-// convert callback style to promise-based code
-function denodeify(code) {
-  return (...parameters) => new Promise((resolve, reject) => {
-    function callback(error, result) {
-      if (error) {
-        reject(error)
-      } else {
-        resolve(result)
-      }
-    }
-    code(...parameters, callback)
-  })
-}
-
 const fs = require('fs')
-const readdir = denodeify(fs.readdir)
-const stat = denodeify(fs.stat)
-const symlink = denodeify(fs.symlink)
+const readdir = promisify(fs.readdir)
+const stat = promisify(fs.stat)
+const symlink = promisify(fs.symlink)
 
 // gather stats of files and subdirectories in given directory
 function readDirectoryStats(directory) {
@@ -47,8 +34,8 @@ function readDirectoryStats(directory) {
 }
 
 
-const deleteEmptyDirectory = denodeify(fs.rmdir)
-const deleteFile = denodeify(fs.unlink)
+const deleteEmptyDirectory = promisify(fs.rmdir)
+const deleteFile = promisify(fs.unlink)
 
 // recursively delete all files and subdirectories from given directory
 function deleteDirectory(directory) {

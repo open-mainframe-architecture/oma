@@ -8,7 +8,6 @@ import constants from 'oma/constants'
 const { foundationName, navigatorName } = constants
 
 const configuration: ServiceConfiguration = {
-  systemBuilderConfiguration: 'oma/system-builder.config',
   bootDirectory: path.join(os.homedir(), 'oma'),
   frontend: { host: '::1', port: 8443, certification: 'oma/boot/certification' }, backend: [],
   devicePersistence: 13,

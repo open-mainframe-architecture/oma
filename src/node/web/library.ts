@@ -15,7 +15,7 @@ import * as path from 'path'
 
 const { createHash } = crypto
 const { O_RDWR } = fs.constants
-const { join } = path
+const { dirname, join } = path
 
 import * as express from 'express'
 
@@ -162,8 +162,13 @@ System.registry.set('systemjs',System.newModule({__useDefault:System}));
   }
 
   public *mount(frontend: Express, backend: Express, configuration: ServiceConfiguration): Story<void> {
-    const { systemBuilderConfiguration, bootDirectory, bundleSubdirectory } = configuration
-    const builder = this.builder = new Builder('.', require.resolve(systemBuilderConfiguration))
+    const { bootDirectory, bundleSubdirectory } = configuration
+    const builder = this.builder = new Builder(dirname(require.resolve('oma')))
+    builder.config({
+      meta: { systemjs: { build: false } },
+      packages: { 'oma/': { defaultExtension: 'js' } },
+      paths: { 'oma/*': '*' }
+    })
     this.bundleDirectory = join(bootDirectory, bundleSubdirectory)
     this.excludeExternals(configuration)
     this.foundationBundle = yield* this.createFoundationBundle(configuration)

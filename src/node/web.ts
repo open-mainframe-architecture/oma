@@ -23,11 +23,6 @@ export type CookieJar = { readonly [name: string]: string }
 export interface ServiceConfiguration {
 
   /**
-   * Module path of SystemJS builder configuration file.
-   */
-  readonly systemBuilderConfiguration: string
-
-  /**
    * Directory where mainframe is booted.
    */
   readonly bootDirectory: string

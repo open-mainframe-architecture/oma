@@ -8,7 +8,10 @@
       "es6"
     ],
     "types": [
-      "node"
+      "express",
+      "http-status-codes",
+      "node",
+      "mocha"
     ],
     "baseUrl": ".",
     "paths": {

@@ -1,0 +1,16 @@
+/* styling for navigator that switches between terminals */
+html, body, #navigator {
+  height: 100%
+}
+
+#navigator {
+  position: relative;
+  overflow: hidden;
+}
+
+/* terminal covers available space of navigator */ 
+#navigator iframe {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+}

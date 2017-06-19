@@ -1,14 +1,19 @@
 {
   "extends": "../default.tsconfig.json",
   "include": [
-    "**/*.ts"
+    "**/*.ts",
+    "**/*.tsx"
   ],
   "compilerOptions": {
+    "jsx": "react",
     "lib": [
       "es6",
       "dom"
     ],
-    "types": [],
+    "types": [
+      "react",
+      "react-dom"
+    ],
     "baseUrl": ".",
     "paths": {
       "oma/*": [

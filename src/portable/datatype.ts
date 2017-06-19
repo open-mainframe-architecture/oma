@@ -490,7 +490,7 @@ function parseTypeExpression2(scanner: Scanner) {
     expressions.add(parseTypeExpression3(scanner))
   } while (scanner.consumed('|'))
   if (expressions.size === 1) {
-    const [expression] = [...expressions]
+    const [expression] = expressions
     return expression
   } else {
     return createUnionExpression(expressions)

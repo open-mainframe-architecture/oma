@@ -2,12 +2,12 @@
   "name": "oma",
   "description": "Reference implementation of the Open Mainframe Architecture",
   "author": "open.mainframe@gmail.com",
-  "version": "11.0.8",
+  "version": "11.0.9",
   "engines": {
-    "node": ">=8.0",
-    "npm": ">=5.0"
+    "node": ">=8.1.2",
+    "npm": ">=5.0.3"
   },
-  "main": "cli",
+  "main": "boot",
   "repository": {
     "type": "git",
     "url": "https://github.com/open-mainframe-architecture/oma.git"
@@ -17,20 +17,27 @@
     "url": "https://github.com/open-mainframe-architecture/oma/issues"
   },
   "scripts": {
-    "prepublishOnly": "node script/prepublish",
     "clean": "node script/clean",
+    "compile": "node script/compile",
+    "prepublishOnly": "npm run compile",
     "test": "mocha --recursive"
   },
   "dependencies": {
+    "body-parser": "^1.17.2",
     "concat-with-sourcemaps": "^1.0.4",
     "express": "^4.15.3",
-    "systemjs": "^0.20.13",
-    "systemjs-builder": "^0.16.6"
+    "http-status-codes": "^1.1.6",
+    "systemjs": "^0.20.14",
+    "systemjs-builder": "^0.16.9"
   },
   "devDependencies": {
-    "@types/express": "^4.0.35",
+    "@types/body-parser": "^1.16.3",
+    "@types/express": "^4.0.36",
+    "@types/http-status-codes": "^1.0.29",
     "@types/mocha": "^2.2.41",
-    "@types/node": "^7.0.27",
+    "@types/node": "^7.0.31",
+    "@types/react": "^15.0.29",
+    "@types/react-dom": "^15.5.0",
     "@types/systemjs": "^0.20.2",
     "mocha": "^3.4.2",
     "typescript": "^2.3.4"

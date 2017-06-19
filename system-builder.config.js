@@ -1,5 +1,5 @@
 System.config({
   meta: { systemjs: { build: false } },
-  packages: { '': { defaultExtension: 'js' } },
+  packages: { 'oma/': { defaultExtension: 'js' } },
   paths: { 'oma/*': '*' }
 })

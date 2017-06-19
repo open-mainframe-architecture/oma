@@ -7,7 +7,9 @@
     "lib": [
       "es6"
     ],
-    "types": [],
+    "types": [
+      "systemjs"
+    ],
     "baseUrl": ".",
     "paths": {
       "oma/*": [

@@ -1,5 +1,6 @@
 import { Record, Universe, Value } from 'oma/data'
 import { Agent, Job } from 'oma/theater'
+
 import { Action, Message } from 'oma/datatype/delta'
 
 export type Differ = (left: Value, right: Value) => Record<Action>[]

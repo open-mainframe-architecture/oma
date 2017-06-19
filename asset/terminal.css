@@ -1,0 +1,4 @@
+/* styling for terminal in an iframe */
+html, body, #terminal {
+  height: 100%
+}

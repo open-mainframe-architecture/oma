@@ -8,11 +8,6 @@ import * as SystemJS from 'systemjs'
 export interface Bundle {
 
   /**
-   * Module path of SystemJS configuration file.
-   */
-  readonly systemConfiguration: string
-
-  /**
    * Is this a foundation bundle with a System implementation?
    */
   readonly includesSystem: boolean
@@ -28,31 +23,51 @@ export interface Bundle {
   readonly digest: string
 
   /**
-   * Bundled modules.
+   * Bundled modules and their dependencies.
    */
-  readonly modules: {
+  readonly modules: { readonly [name: string]: string[] }
 
-    /**
-     * Map full path of a module to its module dependencies.
-     */
-    readonly [name: string]: string[]
-
-  }
+  /**
+   * Global variable dependencies.
+   */
+  readonly globals: { readonly [name: string]: Global }
 
 }
 
 /**
- * Location from where bundle with SystemJS was loaded.
- * The location is a script path in web environments and a module path in Node.js environments.
+ * Dependency on global variable.
  */
-export const bundleLocation: string = SystemJS.scriptSrc // undocumented 'feature' of SystemJS
+export interface Global {
+
+  /**
+   * Package provided by global variable.
+   */
+  readonly package: string
+
+  /**
+   * Path from where package is downloaded.
+   */
+  readonly path: string
+
+  /**
+   * Dependencies to load before this global.
+   */
+  readonly depends?: string[]
+
+}
+
+/**
+ * Path to bundle that loaded SystemJS.
+ * It is a script path in web environments and a module path in Node.js environments.
+ */
+export const bundlePath: string = SystemJS.scriptSrc // undocumented 'feature' of SystemJS
 
 /**
  * Prepare SystemJS for bundle loading.
  * @param home URL to directory where bundles are located
  */
 export function setBundlesHome(home: string) {
-  // 'register' will become 'system' format?
+  // 'register' will become 'system' format in newer versions?
   SystemJS.config({ meta: { [`${home}/*`]: { format: 'register' } } })
 }
 
@@ -67,6 +82,13 @@ export function addBundledModules(bundleLocation: string, specification: Bundle)
       [bundleLocation]: keys(specification.modules)
     }
   })
+  for (const globalName in specification.globals) {
+    const { package: packageName, path, depends } = specification.globals[globalName]
+    SystemJS.config({
+      map: { [packageName]: path },
+      meta: { [packageName]: { format: 'global', exports: globalName, deps: depends ? depends : [] } }
+    })
+  }
 }
 
 /**
@@ -75,5 +97,9 @@ export function addBundledModules(bundleLocation: string, specification: Bundle)
  * @returns Promise of array with imported modules
  */
 export function importModules(moduleNames: string[]) {
-  return Promise.all(moduleNames.map(name => SystemJS.import(name)))
+  return Promise.all(moduleNames.map(importModule))
+}
+
+function importModule(name: string) {
+  return SystemJS.import(name)
 }

@@ -6,19 +6,21 @@ import { Queue } from 'oma/theater/wait'
 
 const { assign, create } = Object
 
+import constants from 'oma/constants'
+
+const { bundleFilename } = constants
+
 import * as always from 'oma/always'
 import * as io from 'oma/io'
 import * as kernel from 'oma/kernel'
 import * as loop from 'oma/loop'
 import * as system from 'oma/system'
-import * as web from 'oma/web'
 
 const { returnNothing, throwError } = always
 const { command, control, synthesize } = io
 const { bearChild, parentChannel } = kernel
 const { entries } = loop
-const { addBundledModules, bundleLocation, importModules, setBundlesHome } = system
-const { bundleFilename } = web.constants
+const { addBundledModules, bundlePath, importModules, setBundlesHome } = system
 
 import * as management from 'oma/theater/management'
 import * as news from 'oma/theater/news'
@@ -38,7 +40,7 @@ export interface Launch {
   /**
    * URL to directory where bundles are located.
    */
-  readonly home: string
+  readonly staticHome: string
 
   /**
    * Specifications of involved bundles.
@@ -48,7 +50,7 @@ export interface Launch {
   /**
    * Main modules are loaded upon launch.
    */
-  readonly main: string[]
+  readonly mainModules: string[]
 
 }
 
@@ -114,16 +116,17 @@ export const environment = spawn<Environment>(director, class $Environment exten
     }
   }
 
-  public *initiate(launch: Launch) {
-    const home = launch.home, bundles = this.launchedBundles
-    setBundlesHome(home)
+  public *initiate(launch: Launch): Story<void> {
+    const staticHome = launch.staticHome, bundles = this.launchedBundles
+    setBundlesHome(staticHome)
     for (const [bundleName, specification] of entries(launch.bundles)) {
       if (bundles[bundleName]) {
-        throw new Error(`bundle conflict ${bundleName}`)
+        throw new Error(`bundle conflict on launch: ${bundleName}`)
       }
-      addBundledModules(`${home}/${bundleName}/${specification.digest}/${bundleFilename}`, bundles[bundleName] = specification)
+      bundles[bundleName] = specification
+      addBundledModules(`${staticHome}/${bundleName}/${specification.digest}/${bundleFilename}`, specification)
     }
-    yield importModules(launch.main)
+    yield importModules(launch.mainModules)
   }
 
 })
@@ -195,7 +198,7 @@ class $Subsidiary extends Loose<Subsidiary> {
   }
 
   public *initialize() {
-    const self = this.self, child = this.child = bearChild<[number, Message]>(bundleLocation)
+    const self = this.self, child = this.child = bearChild<[number, Message]>(bundlePath)
     const switchboard = this.switchboard = new Switchboard(child)
     this.environment = command<Environment>(self, switchboard.open<CommandStream>(self, environmentLine))
     yield run<void>(function controlling() {

@@ -1,8 +1,10 @@
+import { Express } from 'express'
+
 import { Story } from 'oma/theater'
 import { Bundle } from 'oma/system'
-import { Library, ServiceConfiguration } from 'oma/web'
+import { BundleConfiguration, Library, ServantSkeleton, ServiceConfiguration } from 'oma/web'
+
 import { DirectoryContents, ReadData } from 'oma/local/filesystem'
-import { Role } from 'oma/theater/play'
 
 const { parse, stringify } = JSON
 const { create, keys } = Object
@@ -15,21 +17,25 @@ const { createHash } = crypto
 const { O_RDWR } = fs.constants
 const { join } = path
 
+import * as express from 'express'
+
+import constants from 'oma/constants'
+
+const { bundleFilename, foundationName, navigatorName, serviceHome, staticFiles } = constants
+
 import * as always from 'oma/always'
 import * as loop from 'oma/loop'
-import * as web from 'oma/web'
 
 const { returnNothing } = always
-const { iterate, zip } = loop
-const { bundleFilename } = web.constants
+const { iterate, values, zip } = loop
 
 import * as filesystem from 'oma/local/filesystem'
 
 const { access, makeDirectories, readDirectoryContents, readFile, writeFile } = filesystem
 
-export default class LibraryServant extends Role<Library> {
+export default class LibraryServant extends ServantSkeleton<Library> {
 
-  private configuration: ServiceConfiguration
+  private readonly bundles: { [name: string]: { [digest: string]: Bundle } } = create(null)
 
   private builder: SystemBuilder
 
@@ -39,7 +45,14 @@ export default class LibraryServant extends Role<Library> {
 
   private navigatorBundle: Bundle
 
-  private readonly bundles: { [name: string]: { [digest: string]: Bundle } } = create(null)
+  private excludeExternals(configuration: ServiceConfiguration) {
+    for (const bundleConfiguration of values(configuration.mandatoryBundles)) {
+      const globals = bundleConfiguration.globals
+      for (const globalName in globals) {
+        this.builder.config({ meta: { [globals[globalName].package]: { build: false } } })
+      }
+    }
+  }
 
   private *traceDependencies(memoryBuild: InMemoryBuild) {
     const moduleNames = memoryBuild.modules
@@ -71,13 +84,12 @@ export default class LibraryServant extends Role<Library> {
     return bundleSpecification
   }
 
-  private *createFoundationBundle() {
-    const { systemConfiguration, foundationName, foundationModules } = this.configuration
-    const systemPath = require.resolve('systemjs')
+  private *createFoundationBundle(configuration: ServiceConfiguration) {
+    const bundledModules = configuration.mandatoryBundles[foundationName].modules, systemPath = require.resolve('systemjs')
     const [systemSource, systemSourceMap, memoryBuild]: [Buffer, string, InMemoryBuild] = yield Promise.all([
       readFile(systemPath),
       readFile(systemPath + '.map', 'utf8'),
-      this.builder.bundle(foundationModules.join(' + '), bundleOptions)
+      this.builder.bundle(bundledModules.join(' + '), bundleOptions)
     ])
     const digest = computeDigest(memoryBuild, systemSource), publishDirectory = join(this.bundleDirectory, foundationName, digest)
     try {
@@ -85,24 +97,20 @@ export default class LibraryServant extends Role<Library> {
     } catch (ignore) { }
     const concat = new Concat(true, bundleFilename)
     concat.add(systemPath, systemSource as Buffer, systemSourceMap as string)
+    // create a global variable in Node.js, because SystemJS v0.20+ only exports its module in CommonJS environments
     concat.add(null, `
-// create a global variable in Node.js, because SystemJS v0.20+ only exports its module in CommonJS environments
 if(typeof System==="undefined"){global.System=module.exports;module.exports=void 0}
+System.config({packages:{'':{defaultExtension:'js'}}});
+System.registry.set('systemjs',System.newModule({__useDefault:System}));
 `)
     concat.add(null, memoryBuild.source, memoryBuild.sourceMap)
     concat.add(null, `
-// bundle epilogue initializes SystemJS
-System.config({packages:{'':{defaultExtension:'js'}}});
-System.set('systemjs',System.newModule({__useDefault:System}));
-${foundationModules.map(name => 'System.import(\'' + name + '\')').join(';')};
 //# sourceMappingURL=${bundleFilename}.map
 `)
     const modules: { [moduleName: string]: string[] } = yield* this.traceDependencies(memoryBuild)
     modules.systemjs = []
     const bundleSpecification: Bundle = {
-      systemConfiguration,
-      includesSystem: true,
-      timestamp: new Date().toISOString(),
+      includesSystem: true, timestamp: new Date().toISOString(), globals: {},
       digest, modules
     }
     yield makeDirectories(publishDirectory)
@@ -111,9 +119,8 @@ ${foundationModules.map(name => 'System.import(\'' + name + '\')').join(';')};
     return bundleSpecification
   }
 
-  private *createBundle(bundleName: string, include: string[], ...exclude: Bundle[]) {
-    const { systemConfiguration } = this.configuration
-    const expression = include.join(' + ') + ['', ...allModulesFrom(this.foundationBundle, ...exclude)].join(' - ')
+  private *createBundle(configuration: ServiceConfiguration, bundleName: string, include: BundleConfiguration, ...exclude: Bundle[]) {
+    const expression = include.modules.join(' + ') + ['', ...allModulesFrom(this.foundationBundle, ...exclude)].join(' - ')
     const memoryBuild: InMemoryBuild = yield this.builder.bundle(expression, bundleOptions)
     const digest = computeDigest(memoryBuild), publishDirectory = join(this.bundleDirectory, bundleName, digest)
     try {
@@ -121,9 +128,7 @@ ${foundationModules.map(name => 'System.import(\'' + name + '\')').join(';')};
     } catch (ignore) { }
     const modules: { [name: string]: string[] } = yield* this.traceDependencies(memoryBuild)
     const bundleSpecification: Bundle = {
-      systemConfiguration,
-      includesSystem: false,
-      timestamp: new Date().toISOString(),
+      includesSystem: false, timestamp: new Date().toISOString(), globals: include.globals,
       digest, modules
     }
     const source = memoryBuild.source + `
@@ -135,12 +140,8 @@ ${foundationModules.map(name => 'System.import(\'' + name + '\')').join(';')};
     return bundleSpecification
   }
 
-  private *bootBundles() {
-    const { bootDirectory, bundleSubdirectory, navigatorName, navigatorModules } = this.configuration
-    const bundleDirectory = this.bundleDirectory = join(bootDirectory, bundleSubdirectory)
-    this.foundationBundle = yield* this.createFoundationBundle()
-    this.navigatorBundle = yield* this.createBundle(navigatorName, navigatorModules)
-    const bundles = this.bundles
+  private *scanAvailableBundles() {
+    const bundleDirectory = this.bundleDirectory, bundles = this.bundles
     const directoryContents: DirectoryContents = yield readDirectoryContents(bundleDirectory)
     const bundleDirectories = keys(directoryContents).filter(subdirectory => directoryContents[subdirectory].isDirectory())
     const bundleContents: DirectoryContents[] =
@@ -160,15 +161,29 @@ ${foundationModules.map(name => 'System.import(\'' + name + '\')').join(';')};
     }
   }
 
-  public *boot(configuration: ServiceConfiguration): Story<void> {
-    const { systemConfiguration } = this.configuration = configuration
-    this.builder = new Builder('.', require.resolve(systemConfiguration))
-    yield* this.bootBundles()
+  public *mount(frontend: Express, backend: Express, configuration: ServiceConfiguration): Story<void> {
+    const { systemBuilderConfiguration, bootDirectory, bundleSubdirectory } = configuration
+    const builder = this.builder = new Builder('.', require.resolve(systemBuilderConfiguration))
+    this.bundleDirectory = join(bootDirectory, bundleSubdirectory)
+    this.excludeExternals(configuration)
+    this.foundationBundle = yield* this.createFoundationBundle(configuration)
+    this.navigatorBundle = yield* this.createBundle(configuration, navigatorName, configuration.mandatoryBundles[navigatorName])
+    yield* this.scanAvailableBundles()
+    frontend.use(`/${serviceHome}/${staticFiles}`, express.static(this.bundleDirectory, { etag: false, maxAge: '1y' }))
   }
+
+  public mandatoryBundles() {
+    return {
+      [foundationName]: this.foundationBundle,
+      [navigatorName]: this.navigatorBundle
+    }
+  }
+
 }
 
 // describe interfaces of systemjs builder
 interface SystemBuilder {
+  config(refinment: { readonly [name: string]: any }): void
   bundle(moduleExpression: string, options?: BuildOptions): Promise<InMemoryBuild>
   trace(moduleExpression: string): Promise<ModuleTree>
 }
@@ -218,13 +233,16 @@ function allModulesFrom(...bundles: Bundle[]) {
 
 function computeDigest(memoryBuild: InMemoryBuild, ...additionalSources: ReadData[]) {
   const hash = createHash('md5'), tree = memoryBuild.tree
-  for (const modulePath of keys(tree).filter(modulePath => modulePath.indexOf('systemjs') < 0).sort()) {
-    hash.update(tree[modulePath].source)
+  for (const modulePath of keys(tree).sort()) {
+    const moduleInfo = tree[modulePath]
+    if (moduleInfo) {
+      hash.update(moduleInfo.source)
+    }
   }
   for (const source of additionalSources) {
     hash.update(source)
   }
-  return hash.digest('base64').replace(/=*$/, '').replace(/\//g, '-').replace(/\+/g, '_')
+  return hash.digest('hex') // use case-insensitive hex format
 }
 
 function readBundleSpecification(directory: string): Promise<Bundle> {

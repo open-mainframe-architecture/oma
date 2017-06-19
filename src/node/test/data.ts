@@ -351,49 +351,39 @@ describe('composite value', function () {
     assert.strictEqual(universe.Dictionary('NumberDictionary')({}).concrete$, parseType('<number>'))
     assert.strictEqual(universe.Dictionary('NumberDictionary')({ foo: 42, bar: 54, baz: 66 }).concrete$, parseType('<number>'))
     assert.strictEqual(universe.Record<Link<number>>('NumberLink')({ head: 42 }).concrete$, parseType('{head:number,tail:Link(number)}'))
-    assert.strictEqual(universe.Record<Link<number>>('NumberLink')
-      ({ head: 42, tail: NumberLink({ head: 54, tail: NumberLink({ head: 66 }) }) }).concrete$,
+    const tail = NumberLink({ head: 54, tail: NumberLink({ head: 66 }) })
+    assert.strictEqual(
+      universe.Record<Link<number>>('NumberLink')({ head: 42, tail }).concrete$,
       parseType('{head:number,tail:Link(number)}'))
   })
   it('iterates over indices', function () {
-    assert.deepEqual([...NumberList([]).indices$], [])
+    assert.equal([...NumberList([]).indices$].length, 0)
     assert.deepEqual([...NumberList([42, 54, 66]).indices$], [1, 2, 3])
-    assert.deepEqual([...NumberDictionary({}).indices$], [])
-    assert.deepEqual([...NumberDictionary({ foo: 42, bar: 54, baz: 66 }).indices$].sort(), ['bar', 'baz', 'foo'])
-    assert.deepEqual([...NumberLink({ head: 42 }).indices$].sort(), ['head', 'tail'])
+    assert.equal([...NumberDictionary({}).indices$].length, 0)
+    assert.deepEqual(new Set(NumberDictionary({ foo: 42, bar: 54, baz: 66 }).indices$), new Set(['foo', 'bar', 'baz']))
+    assert.deepEqual(new Set(NumberLink({ head: 42 }).indices$), new Set(['head', 'tail']))
     assert.deepEqual(
-      [...NumberLink({ head: 42, tail: NumberLink({ head: 54, tail: NumberLink({ head: 66 }) }) }).indices$].sort(),
-      ['head', 'tail'])
+      new Set(NumberLink({ head: 42, tail: NumberLink({ head: 54, tail: NumberLink({ head: 66 }) }) }).indices$),
+      new Set(['head', 'tail']))
   })
   it('iterates over constituents', function () {
-    assert.deepEqual([...NumberList([]).constituents$], [])
+    assert.equal([...NumberList([]).constituents$].length, 0)
     assert.deepEqual([...NumberList([42, 54, 66]).constituents$], [42, 54, 66])
-    assert.deepEqual([...NumberDictionary({}).constituents$], [])
-    assert.deepEqual([...NumberDictionary({ foo: 42, bar: 54, baz: 66 }).constituents$].sort(), [42, 54, 66])
-    function compareApplesAndOranges(left: any, right: any) {
-      return typeof left < typeof right ? -1 : typeof left > typeof right ? 1 : 0
-    }
-    assert.deepEqual([...NumberLink({ head: 42 }).constituents$].sort(compareApplesAndOranges), [42, null])
+    assert.equal([...NumberDictionary({}).constituents$].length, 0)
+    assert.deepEqual(new Set(NumberDictionary({ foo: 42, bar: 54, baz: 66 }).constituents$), new Set([42, 54, 66]))
     const tail = NumberLink({ head: 54, tail: NumberLink({ head: 66 }) })
-    assert.deepEqual([...NumberLink({ head: 42, tail }).constituents$].sort(compareApplesAndOranges), [42, tail])
+    assert.deepEqual(new Set(NumberLink({ head: 42, tail }).constituents$), new Set([42, tail]))
   })
   it('iterates over associations', function () {
-    assert.deepEqual([...NumberList([]).associations$], [])
+    assert.equal([...NumberList([]).associations$].length, 0)
     assert.deepEqual([...NumberList([42, 54, 66]).associations$], [[1, 42], [2, 54], [3, 66]])
-    assert.deepEqual([...NumberDictionary({}).associations$], [])
-    const dictionary = NumberDictionary({ foo: 42, bar: 54, baz: 66 })
-    assert.deepEqual([...map(dictionary.associations$, ([key]) => key)].sort(), ['bar', 'baz', 'foo'])
-    assert.deepEqual([...map(dictionary.associations$, ([key, value]) => value)].sort(), [42, 54, 66])
-    const record1 = NumberLink({ head: 42 })
-    assert.deepEqual([...map(record1.associations$, ([key]) => key)].sort(), ['head', 'tail'])
-    assert.deepEqual([...map(record1.associations$, ([key, value]) => value)].sort(), [42, null])
-    function compareApplesAndOranges(left: any, right: any) {
-      return typeof left < typeof right ? -1 : typeof left > typeof right ? 1 : 0
-    }
+    assert.equal([...NumberDictionary({}).associations$].length, 0)
+    assert.deepEqual(
+      new Set(NumberDictionary({ foo: 42, bar: 54, baz: 66 }).associations$),
+      new Set([['foo', 42], ['bar', 54], ['baz', 66]]))
+    assert.deepEqual(new Set(NumberLink({ head: 42 }).associations$), new Set([['head', 42], ['tail', null]]))
     const tail = NumberLink({ head: 54, tail: NumberLink({ head: 66 }) })
-    const record2 = NumberLink({ head: 42, tail })
-    assert.deepEqual([...map(record2.associations$, ([key]) => key)].sort(), ['head', 'tail'])
-    assert.deepEqual([...map(record2.associations$, ([key, value]) => value)].sort(compareApplesAndOranges), [42, tail])
+    assert.deepEqual(new Set(NumberLink({ head: 42, tail }).associations$), new Set([['head', 42], ['tail', tail]]))
   })
   it('has a width', function () {
     assert.equal(NumberList([]).width$, 0)
@@ -648,10 +638,14 @@ describe('indices of constituents', function () {
     assert.equal([...indices(universe.List('NumberList')([]))].length, 0)
     assert.deepEqual([...indices(universe.List('NumberList')([42, 54, 66]))], [1, 2, 3])
     assert.equal([...indices(universe.Dictionary('NumberDictionary')({}))].length, 0)
-    assert.deepEqual([...indices(universe.Dictionary('NumberDictionary')({ foo: 42, bar: 54, baz: 66 }))].sort(), ['bar', 'baz', 'foo'])
-    assert.deepEqual([...indices(universe.Record<Link<number>>('NumberLink')({ head: 42 }))].sort(), ['head', 'tail'])
-    assert.deepEqual([...indices(universe.Record<Link<number>>('NumberLink')
-      ({ head: 42, tail: NumberLink({ head: 54, tail: NumberLink({ head: 66 }) }) }))].sort(), ['head', 'tail'])
+    assert.deepEqual(
+      new Set(indices(universe.Dictionary('NumberDictionary')({ foo: 42, bar: 54, baz: 66 }))),
+      new Set(['foo', 'bar', 'baz']))
+    assert.deepEqual(new Set(indices(universe.Record<Link<number>>('NumberLink')({ head: 42 }))), new Set(['head', 'tail']))
+    const tail = NumberLink({ head: 54, tail: NumberLink({ head: 66 }) })
+    assert.deepEqual(
+      new Set(indices(universe.Record<Link<number>>('NumberLink')({ head: 42, tail }))),
+      new Set(['head', 'tail']))
   })
 })
 
@@ -674,15 +668,16 @@ describe('constituent values', function () {
     assert.equal([...constituents(universe.List('NumberList')([]))].length, 0)
     assert.deepEqual([...constituents(universe.List('NumberList')([42, 54, 66]))], [42, 54, 66])
     assert.equal([...constituents(universe.Dictionary('NumberDictionary')({}))].length, 0)
-    assert.deepEqual([...constituents(universe.Dictionary('NumberDictionary')({ foo: 42, bar: 54, baz: 66 }))].sort(), [42, 54, 66])
-    function compareApplesAndOranges(left: any, right: any) {
-      return typeof left < typeof right ? -1 : typeof left > typeof right ? 1 : 0
-    }
-    assert.deepEqual([...constituents(universe.Record<Link<number>>('NumberLink')({ head: 42 }))].sort(compareApplesAndOranges),
-      [42, null])
+    assert.deepEqual(
+      new Set(constituents(universe.Dictionary('NumberDictionary')({ foo: 42, bar: 54, baz: 66 }))),
+      new Set([42, 54, 66]))
+    assert.deepEqual(
+      new Set(constituents(universe.Record<Link<number>>('NumberLink')({ head: 42 }))),
+      new Set([42, null]))
     const tail = NumberLink({ head: 54, tail: NumberLink({ head: 66 }) })
-    assert.deepEqual([...constituents(universe.Record<Link<number>>('NumberLink')({ head: 42, tail }))].sort(compareApplesAndOranges),
-      [42, tail])
+    assert.deepEqual(
+      new Set(constituents(universe.Record<Link<number>>('NumberLink')({ head: 42, tail }))),
+      new Set([42, tail]))
   })
 })
 
@@ -703,23 +698,18 @@ describe('association pairs', function () {
   })
   it('are present in composite value', function () {
     assert.equal([...associations(universe.List('NumberList')([]))].length, 0)
-    function compareNumberAssociations([left]: [number, number], [right]: [number, number]) {
-      return left < right ? -1 : left > right ? 1 : 0
-    }
-    assert.deepEqual([...associations(universe.List('NumberList')([42, 54, 66]))].sort(compareNumberAssociations),
-      [[1, 42], [2, 54], [3, 66]])
+    assert.deepEqual(new Set(associations(universe.List('NumberList')([42, 54, 66]))), new Set([[1, 42], [2, 54], [3, 66]]))
     assert.equal([...associations(universe.Dictionary('NumberDictionary')({}))].length, 0)
-    function compareStringAssociations([left]: [string, any], [right]: [string, any]) {
-      return left < right ? -1 : left > right ? 1 : 0
-    }
     assert.deepEqual(
-      [...associations(universe.Dictionary('NumberDictionary')({ foo: 42, bar: 54, baz: 66 }))].sort(compareStringAssociations),
-      [['bar', 54], ['baz', 66], ['foo', 42]])
-    assert.deepEqual([...associations(universe.Record<Link<number>>('NumberLink')({ head: 42 }))].sort(compareStringAssociations),
-      [['head', 42], ['tail', null]])
+      new Set(associations(universe.Dictionary('NumberDictionary')({ foo: 42, bar: 54, baz: 66 }))),
+      new Set([['foo', 42], ['bar', 54], ['baz', 66]]))
+    assert.deepEqual(
+      new Set(associations(universe.Record<Link<number>>('NumberLink')({ head: 42 }))),
+      new Set([['head', 42], ['tail', null]]))
     const tail = NumberLink({ head: 54, tail: NumberLink({ head: 66 }) })
-    assert.deepEqual([...associations(universe.Record<Link<number>>('NumberLink')({ head: 42, tail }))].sort(compareStringAssociations),
-      [['head', 42], ['tail', tail]])
+    assert.deepEqual(
+      new Set(associations(universe.Record<Link<number>>('NumberLink')({ head: 42, tail }))),
+      new Set([['head', 42], ['tail', tail]]))
   })
 })
 

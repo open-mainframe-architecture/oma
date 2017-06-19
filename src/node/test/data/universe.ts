@@ -47,24 +47,16 @@ describe('primal data universe', function () {
     assert.deepEqual([...NumberDictionary({}).constituents$], [])
     assert.deepEqual([...NumberDictionary({}).indices$], [])
     assert.deepEqual([...NumberDictionary({}).associations$], [])
-    assert.deepEqual([...NumberDictionary({ foo: 42, bar: 54, baz: 66 }).constituents$].sort(), [42, 54, 66])
-    assert.deepEqual([...NumberDictionary({ foo: 42, bar: 54, baz: 66 }).indices$].sort(), ['bar', 'baz', 'foo'])
-    function compareAssociations([left]: [string, number], [right]: [string, number]) {
-      return left < right ? -1 : left > right ? 1 : 0
-    }
-    assert.deepEqual([...NumberDictionary({ foo: 42, bar: 54, baz: 66 }).associations$].sort(compareAssociations),
-      [['bar', 54], ['baz', 66], ['foo', 42]])
+    assert.deepEqual(new Set(NumberDictionary({ foo: 42, bar: 54, baz: 66 }).constituents$), new Set([42, 54, 66]))
+    assert.deepEqual(new Set(NumberDictionary({ foo: 42, bar: 54, baz: 66 }).indices$), new Set(['foo', 'bar', 'baz']))
+    assert.deepEqual(
+      new Set(NumberDictionary({ foo: 42, bar: 54, baz: 66 }).associations$),
+      new Set([['foo', 42], ['bar', 54], ['baz', 66]]))
   })
   it('constructs record factories', function () {
-    function compareApplesAndOranges(left: any, right: any) {
-      return typeof left < typeof right ? -1 : typeof left > typeof right ? 1 : 0
-    }
-    assert.deepEqual([...NumberLink({ head: 42 }).constituents$].sort(compareApplesAndOranges), [42, null])
-    assert.deepEqual([...NumberLink({ head: 42 }).indices$].sort(), ['head', 'tail'])
-    function compareAssociations([left]: [string, number], [right]: [string, number]) {
-      return left < right ? -1 : left > right ? 1 : 0
-    }
-    assert.deepEqual([...NumberLink({ head: 42 }).associations$].sort(compareAssociations), [['head', 42], ['tail', null]])
+    assert.deepEqual(new Set(NumberLink({ head: 42 }).constituents$), new Set([42, null]))
+    assert.deepEqual(new Set(NumberLink({ head: 42 }).indices$), new Set(['head', 'tail']))
+    assert.deepEqual(new Set(NumberLink({ head: 42 }).associations$), new Set([['head', 42], ['tail', null]]))
   })
   it('constructs membership testers', function () {
     assert.ok(universe.tester('[number]')(NumberList([])))
@@ -207,7 +199,7 @@ describe('recycling data universe', function () {
   let listUnmarshaller: ListUnmarshaller, unmarshalledList = 0
   let dictionaryUnmarshaller: DictionaryUnmarshaller, unmarshalledDictionary = 0
   let recordUnmarshaller: RecordUnmarshaller, unmarshalledRecord = 0
-  function copyUnmarshallers(BaseUniverse: UniverseConstructor) {
+  function testingPurposes(BaseUniverse: UniverseConstructor) {
     return class TestedUniverse extends BaseUniverse {
       protected listUnmarshaller(dynamic: Expression) {
         ++unmarshalledList
@@ -223,7 +215,7 @@ describe('recycling data universe', function () {
       }
     }
   }
-  const RecyclingUniverse = copyUnmarshallers(withRecycling(PrimalUniverse))
+  const RecyclingUniverse = testingPurposes(withRecycling(PrimalUniverse))
   const universe: Universe = new RecyclingUniverse(typespace)
   it('reuses existing factories', function () {
     assert.strictEqual(universe.List('[number]'), universe.List('[number]'))

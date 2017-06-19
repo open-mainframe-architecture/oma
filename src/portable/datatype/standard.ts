@@ -10,9 +10,9 @@ export default {
   Text: 'string|[string]',
   // either a T or none
   Maybe: '(T=*)?T',
-  // list values (backed by arrays)
+  // list value (backed by array)
   List: '(T=Any)[T]',
-  // dictionary values
+  // dictionary value
   Dictionary: '(T=Any)<T>',
   // empty record (all record values are members of this type)
   Record: '{}',

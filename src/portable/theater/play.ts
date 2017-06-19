@@ -536,13 +536,15 @@ class Completions<T> extends Group<T> {
   }
 
   public deleteCharged(member: wait.GroupMember<T>, discharged: boolean) {
+    // delete member from this group before job is quit (otherwise member is discharged twice)
+    super.deleteCharged(member, discharged)
     if (member === this.controller) {
       this.controller = null
       if (discharged) {
+        // ignite remaining group members, if any
         this.job.quit()
       }
     }
-    return super.deleteCharged(member, discharged)
   }
 
 }

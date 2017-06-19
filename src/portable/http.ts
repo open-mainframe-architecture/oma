@@ -51,6 +51,19 @@ export interface Response extends Message {
   readonly status?: string
 }
 
+export function createURI(partial: Partial<URI>): URI {
+  return {
+    scheme: partial.scheme || '',
+    user: partial.user || '',
+    password: partial.password || '',
+    host: partial.host || '',
+    port: partial.port || '',
+    path: partial.path || [],
+    query: partial.query || [],
+    fragment: partial.fragment || ''
+  }
+}
+
 export function decodeURI(input: string): URI | undefined {
   const parts = uriPattern.exec(input)
   if (parts) {
@@ -144,10 +157,13 @@ interface RiseBody {
 
 class Sink<A extends Agent> extends Role<A>  {
 
+  private readonly uri: URI
+
   private readonly marshaller: (value: Value) => Shape
 
-  constructor(private readonly location: string | URI, private readonly universe: Universe) {
+  constructor(location: string | URI, private readonly universe: Universe) {
     super()
+    this.uri = validateURI(location)
     this.marshaller = (value: Value) => universe.marshal(value)
   }
 
@@ -155,8 +171,12 @@ class Sink<A extends Agent> extends Role<A>  {
     if (!values.every(isValuable)) {
       throw new Error('remote agent expects valuable parameters')
     }
-    const parameters = values.map(value => this.marshaller)
-    const response: Response = yield post(this.location, stringify({ selector, parameters }))
+    const response: Response = yield send({
+      method: 'POST',
+      uri: this.uri,
+      headers: [['Accept', 'application/json'], ['Content-Type', 'application/json']],
+      body: stringify({ selector, parameters: values.map(this.marshaller) } as SinkBody)
+    })
     const { result, forensics }: RiseBody = parse(<string>response.body)
     return forensics ? new Testimony(forensics) : this.universe.unmarshal(<Shape>result)
   }

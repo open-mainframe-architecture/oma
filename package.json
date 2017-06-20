@@ -2,7 +2,7 @@
   "name": "oma",
   "description": "Reference implementation of the Open Mainframe Architecture",
   "author": "open.mainframe@gmail.com",
-  "version": "11.0.10",
+  "version": "11.0.11",
   "engines": {
     "node": ">=8.1.2",
     "npm": ">=5.0.3"
@@ -35,7 +35,7 @@
     "@types/express": "^4.0.36",
     "@types/http-status-codes": "^1.0.29",
     "@types/mocha": "^2.2.41",
-    "@types/node": "^7.0.31",
+    "@types/node": "^8.0.0",
     "@types/react": "^15.0.29",
     "@types/react-dom": "^15.5.0",
     "@types/systemjs": "^0.20.2",

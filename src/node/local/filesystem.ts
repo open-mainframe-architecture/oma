@@ -4,10 +4,10 @@ const { create } = Object
 
 import * as fs from 'fs'
 import * as path from 'path'
+import * as util from 'util'
 
 const { dirname, join } = path
-
-import denodeify from 'oma/denodeify'
+const { promisify } = util
 
 export type ReadData = string | Buffer
 export type ReadOptions = string | { encoding: string, flag?: string } | { flag: string }
@@ -16,19 +16,19 @@ export type WriteOptions = string | { encoding?: string, flag?: string, mode?: n
 
 export type DirectoryContents = { readonly [filename: string]: Stats }
 
-export const access = denodeify<(filename: string, mode?: number) => Promise<void>>(fs.access)
-export const peekFile = denodeify<(filename: string) => Promise<fs.Stats>>(fs.stat)
-export const readFile = denodeify<(filename: string, options?: ReadOptions) => Promise<ReadData>>(fs.readFile)
-export const writeFile = denodeify<(filename: string, data: WriteData, options?: WriteOptions) => Promise<void>>(fs.writeFile)
+export const access = promisify(fs.access) as (filename: string, mode?: number) => Promise<void>
+export const peekFile = promisify(fs.stat) as (filename: string) => Promise<fs.Stats>
+export const readFile = promisify(fs.readFile) as (filename: string, options?: ReadOptions) => Promise<ReadData>
+export const writeFile = promisify(fs.writeFile) as (filename: string, data: WriteData, options?: WriteOptions) => Promise<void>
 
-export const open = denodeify<(filename: string, flags: string | number, mode?: number) => Promise<number>>(fs.open)
-export const write = denodeify<(fd: number, content: Buffer | string) => Promise<number>>(fs.write)
-export const close = denodeify<(fs: number) => Promise<void>>(fs.close)
+export const open = promisify(fs.open) as (filename: string, flags: string | number, mode?: number) => Promise<number>
+export const write = promisify(fs.write) as (fd: number, content: Buffer | string) => Promise<number>
+export const close = promisify(fs.close) as (fs: number) => Promise<void>
 
-export const makeDirectory = denodeify<(directory: string, mode?: number) => Promise<void>>(fs.mkdir)
-export const readDirectory = denodeify<(directory: string) => Promise<string[]>>(fs.readdir)
+export const makeDirectory = promisify(fs.mkdir) as (directory: string, mode?: number) => Promise<void>
+export const readDirectory = promisify(fs.readdir) as (directory: string) => Promise<string[]>
 
-export const stat = denodeify<(filename: string) => Promise<Stats>>(fs.stat)
+export const stat = promisify(fs.stat) as (filename: string) => Promise<Stats>
 
 export function makeDirectories(directory: string, mode?: number): Promise<void> {
   return peekFile(directory)

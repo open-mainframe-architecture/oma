@@ -119,7 +119,7 @@ System.registry.set('systemjs',System.newModule({__useDefault:System}));
     return bundleSpecification
   }
 
-  private *createBundle(configuration: ServiceConfiguration, bundleName: string, include: BundleConfiguration, ...exclude: Bundle[]) {
+  private *createBundle(bundleName: string, include: BundleConfiguration, ...exclude: Bundle[]) {
     const expression = include.modules.join(' + ') + ['', ...allModulesFrom(this.foundationBundle, ...exclude)].join(' - ')
     const memoryBuild: InMemoryBuild = yield this.builder.bundle(expression, bundleOptions)
     const digest = computeDigest(memoryBuild), publishDirectory = join(this.bundleDirectory, bundleName, digest)
@@ -162,17 +162,17 @@ System.registry.set('systemjs',System.newModule({__useDefault:System}));
   }
 
   public *mount(frontend: Express, backend: Express, configuration: ServiceConfiguration): Story<void> {
-    const { bootDirectory, bundleSubdirectory } = configuration
-    const builder = this.builder = new Builder(dirname(require.resolve('oma')))
+    const builder = this.builder = new Builder(fileURL(dirname(require.resolve('oma'))))
     builder.config({
       meta: { systemjs: { build: false } },
       packages: { 'oma/': { defaultExtension: 'js' } },
       paths: { 'oma/*': '*' }
     })
+    const { bootDirectory, bundleSubdirectory } = configuration
     this.bundleDirectory = join(bootDirectory, bundleSubdirectory)
     this.excludeExternals(configuration)
     this.foundationBundle = yield* this.createFoundationBundle(configuration)
-    this.navigatorBundle = yield* this.createBundle(configuration, navigatorName, configuration.mandatoryBundles[navigatorName])
+    this.navigatorBundle = yield* this.createBundle(navigatorName, configuration.mandatoryBundles[navigatorName])
     yield* this.scanAvailableBundles()
     frontend.use(`/${serviceHome}/${staticFiles}`, express.static(this.bundleDirectory, { etag: false, maxAge: '1y' }))
   }
@@ -260,4 +260,9 @@ function writeBundle(directory: string, content: ReadData, sourceMap: string, bu
   const writeSourceMap = writeFile(filename + '.map', sourceMap, 'utf8')
   const writeSpecification = writeFile(filename + '.json', stringify(bundleSpecification, void 0, '  '), 'utf8')
   return Promise.all([writeSource, writeSourceMap, writeSpecification]).then(returnNothing)
+}
+
+function fileURL(absoluteFile: string) {
+  const absolutePath = absoluteFile[0] === '/' ? absoluteFile : `/${absoluteFile.replace(/\\/g, '/')}`
+  return encodeURI(`file://${absolutePath}`).replace(/[?#]/g, encodeURIComponent)
 }

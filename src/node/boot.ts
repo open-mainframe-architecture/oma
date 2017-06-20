@@ -55,13 +55,12 @@ class ServiceManager extends Loose<Manager> {
   private backendServers: https.Server[]
 
   private *prepareBootDirectory() {
-    const exiting = <NodeJS.Signals[]>['SIGBREAK', 'SIGHUP', 'SIGINT', 'SIGTERM']
     const { exit, pid } = process, { username } = userInfo()
     const { bootDirectory } = this.configuration, lock = join(bootDirectory, 'lock.pid')
     yield makeDirectories(bootDirectory)
     const fd: number = yield open(lock, 'wx')
     process.on('exit', () => unlinkSync(lock))
-    for (const signal of exiting) {
+    for (const signal of ['SIGBREAK', 'SIGHUP', 'SIGINT', 'SIGTERM'] as NodeJS.Signals[]) {
       process.on(signal, () => {
         console.error(`Exiting after receiving ${signal}`)
         exit(99)
